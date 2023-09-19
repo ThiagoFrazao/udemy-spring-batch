@@ -9,6 +9,7 @@ import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.function.FunctionItemProcessor;
 import org.springframework.batch.item.support.IteratorItemReader;
@@ -33,13 +34,13 @@ public class ParImparBatchConfig {
     }
 
     @Bean
-    public Step stepImprimirParImpar(JobRepository jobRepository, PlatformTransactionManager transactionManager, JdbcCursorItemReader<Cliente> reader) {
+    public Step stepImprimirParImpar(JobRepository jobRepository, PlatformTransactionManager transactionManager, JdbcCursorItemReader<Cliente> reader, JdbcBatchItemWriter<Cliente> writer) {
         log.info("Step encontrado");
         return new StepBuilder("imprimirParImpar", jobRepository)
-                .<Cliente, String>chunk(2, transactionManager)
+                .<Cliente, Cliente>chunk(2, transactionManager)
                 .reader(reader)
                 .processor(clienteMaiorDeIdade())
-                .writer(imprimeResultadoWriter())
+                .writer(writer)
                 .build();
     }
 
@@ -47,11 +48,10 @@ public class ParImparBatchConfig {
         return itens -> itens.forEach(log::info);
     }
 
-    private FunctionItemProcessor<Cliente, String> clienteMaiorDeIdade() {
+    private FunctionItemProcessor<Cliente, Cliente> clienteMaiorDeIdade() {
         return new FunctionItemProcessor<>(
                 cliente -> Integer.parseInt(cliente.getIdade()) > 18 ?
-                        "Cliente %s %s é maior de idade".formatted(cliente.getNome(), cliente.getSobrenome()) :
-                        "Cliente %s %s é menor de idade".formatted(cliente.getIdade(), cliente.getSobrenome()));
+                        cliente : null);
     }
 
     private IteratorItemReader<Integer> contaAte10Reader() {
