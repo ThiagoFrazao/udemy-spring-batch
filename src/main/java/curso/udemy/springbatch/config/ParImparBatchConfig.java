@@ -1,5 +1,6 @@
 package curso.udemy.springbatch.config;
 
+import curso.udemy.springbatch.batch.dao.Cliente;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -8,6 +9,7 @@ import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.function.FunctionItemProcessor;
 import org.springframework.batch.item.support.IteratorItemReader;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,12 +33,12 @@ public class ParImparBatchConfig {
     }
 
     @Bean
-    public Step stepImprimirParImpar(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+    public Step stepImprimirParImpar(JobRepository jobRepository, PlatformTransactionManager transactionManager, JdbcCursorItemReader<Cliente> reader) {
         log.info("Step encontrado");
         return new StepBuilder("imprimirParImpar", jobRepository)
-                .<Integer, String>chunk(2, transactionManager)
-                .reader(contaAte10Reader())
-                .processor(verificaParOuImparProcessor())
+                .<Cliente, String>chunk(2, transactionManager)
+                .reader(reader)
+                .processor(clienteMaiorDeIdade())
                 .writer(imprimeResultadoWriter())
                 .build();
     }
@@ -45,9 +47,11 @@ public class ParImparBatchConfig {
         return itens -> itens.forEach(log::info);
     }
 
-    private FunctionItemProcessor<Integer, String> verificaParOuImparProcessor() {
+    private FunctionItemProcessor<Cliente, String> clienteMaiorDeIdade() {
         return new FunctionItemProcessor<>(
-                item -> item % 2 == 0 ? "Item %s e par".formatted(item) : "Item %s e impar".formatted(item));
+                cliente -> Integer.parseInt(cliente.getIdade()) > 18 ?
+                        "Cliente %s %s é maior de idade".formatted(cliente.getNome(), cliente.getSobrenome()) :
+                        "Cliente %s %s é menor de idade".formatted(cliente.getIdade(), cliente.getSobrenome()));
     }
 
     private IteratorItemReader<Integer> contaAte10Reader() {
